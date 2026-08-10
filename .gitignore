@@ -1,0 +1,7 @@
+.env
+app-demo.html
+gradion-assessment-intern-software-engineer.md
+.vscode/
+frontend/node_modules/
+frontend/dist/
+frontend/.npm/
