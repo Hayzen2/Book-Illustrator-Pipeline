@@ -3,18 +3,23 @@ package com.example.BookIllustrator.controller;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.example.BookIllustrator.dto.api.ApiResponse;
+import com.example.BookIllustrator.dto.project.ProjectCreateRequest;
 import com.example.BookIllustrator.dto.project.ProjectListResponse;
 import com.example.BookIllustrator.entity.Project;
 import com.example.BookIllustrator.repository.ProjectRepository;
-import com.example.BookIllustrator.service.FileStorageService;
-import com.example.BookIllustrator.service.ProjectStepExecutionService;
+import com.example.BookIllustrator.service.ProjectManagementService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,8 +27,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/projects")
 @RequiredArgsConstructor
 public class ProjectController {
-    private final FileStorageService fileStorageService;
-    private final ProjectStepExecutionService projectService;
+    private final ProjectManagementService projectManagementService;
     private final ProjectRepository projectRepository;
 
     @GetMapping("/all")
@@ -44,5 +48,21 @@ public class ProjectController {
     public ApiResponse<Project> getProjectById(@PathVariable Long projectId, @AuthenticationPrincipal Long userId) {
         Project project = projectRepository.findByIdAndUserId(projectId, userId).orElseThrow(() -> new RuntimeException("Project not found with ID: " + projectId));
         return new ApiResponse<>(200, "Project fetched successfully", project);
+    }
+
+    @PostMapping("/create")
+    public ApiResponse<Project> createProject(@AuthenticationPrincipal Long userId, @RequestBody ProjectCreateRequest request) {
+        Project project = projectManagementService.createProject(userId, request);
+        return new ApiResponse<>(201, "Project created successfully", project);
+    }
+
+    // Endpoint to create a project with a file upload txt file
+    @PostMapping(value = "/create/txt", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<Project> createProjectWithFile(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam("title") String title,
+            @RequestParam("file") MultipartFile fileUpload) {
+        Project project = projectManagementService.createProject(userId, title, fileUpload);
+        return new ApiResponse<>(201, "Project created successfully", project);
     }
 }
