@@ -1,9 +1,9 @@
 package com.example.BookIllustrator.controller;
 
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Controller
+@RestController
 @RequestMapping("/projects/{projectId}/steps")
 public class AIPipelineController {
 

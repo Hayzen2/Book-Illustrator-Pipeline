@@ -16,8 +16,11 @@ spring:
       hibernate:
         format_sql: true # Format SQL output for better readability
         dialect: org.hibernate.dialect.MySQLDialect
-  app:
-    gemini:
-      api-key: ${GEMINI_API_KEY:dummy_key}
-  server:
-    port: 8080
+app:
+  gemini:
+    api-key: ${GEMINI_API_KEY:dummy_key}
+server:
+  port: 8080
+jwt:
+  secret: ${JWT_SECRET:DefaultSecretKey123@}
+  expiration: 86400000 # 1 day

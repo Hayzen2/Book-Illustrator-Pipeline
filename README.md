@@ -13,6 +13,8 @@ Create a `.env` file in the root directory based on the provided `.env.example`:
 ```env
 GEMINI_API_KEY=your_actual_gemini_api_key_here
 
+JWT_SECRET=your_actual_jwt_secret_here (blank for default)
+
 # Database Configuration (Used by Docker Compose & Spring Boot)
 DB_PORT=3306
 DB_ROOT_PASSWORD=rootpassword
@@ -75,6 +77,7 @@ backend/src/main/java/com/pipeline/
 ├── entity/         # JPA Entities mapping directly to the MySQL database schema
 ├── repository/     # Spring Data JPA interfaces (Houses the custom @Modifying Atomic Claim-Check query)
 └── service/        # Core business logic, @Async background task orchestration, and DB transactions
+└── util/           # Utility classes (JWT Util, Error Handling,...)
 ```
 
 ### Frontend (React + Vite)
