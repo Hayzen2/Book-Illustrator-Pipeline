@@ -46,6 +46,7 @@ chmod +x start.sh test.sh
 6. **Access the Application**:
    - Open your web browser and navigate to `http://localhost:5173` to access the frontend.
    - The backend API will be available at `http://localhost:8080`.
+   - Database UI (phpMyAdmin): Access http://localhost:8081 to view and inspect MySQL tables, entities, and state transitions in real-time (Log in using the credentials defined in your .env file).
 7. **Run Tests**:
 ```bash
 ./test.sh

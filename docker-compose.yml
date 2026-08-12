@@ -7,15 +7,28 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
       MYSQL_DATABASE: ${DB_DATABASE:-book_illustrator}
-      MYSQL_USER: ${DB_USER:-app_user}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-app_password}
+      MYSQL_USER: ${DB_USER:-gradion_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-gradion_secret_123}
     volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
       - mysql_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
+  # phpMyAdmin service for database management web interface
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: book_illustrator_phpmyadmin
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: mysql # Link to the MySQL service above
+      PMA_PORT: 3306
+    depends_on:
+      mysql:
+        condition: service_healthy
 
 volumes:
   mysql_data:

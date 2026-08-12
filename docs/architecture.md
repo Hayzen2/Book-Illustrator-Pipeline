@@ -18,9 +18,9 @@ The database schema consists of five main tables:
 ```mermaid
 erDiagram
     users ||--o{ projects : "creates"
-    projects ||--o{ project_steps : "tracks state of"
+    projects ||--|{ project_steps : "tracks state of"
     projects ||--o{ characters : "contains"
-    projects ||--o{ chapters : "contains"
+    projects ||--o| chapters : "contains" 
 
     users {
         BIGINT id PK
@@ -42,9 +42,9 @@ erDiagram
 
     project_steps {
         BIGINT id PK
-        BIGINT project_id FK
+        BIGINT project_id FK "UNIQUE with step_name"
         ENUM step_name
-        ENUM status "PENDING, RUNNING, COMPLETED, FAILED"
+        ENUM status "PENDING, IN_PROGRESS, COMPLETED, FAILED"
         TEXT error_message
         VARCHAR interaction_id "Gemini context chaining"
         TIMESTAMP updated_at
@@ -60,7 +60,7 @@ erDiagram
 
     chapters {
         BIGINT id PK
-        BIGINT project_id FK
+        BIGINT project_id FK "UNIQUE"
         VARCHAR name
         TEXT illustration_prompt
         VARCHAR illustration_image_path

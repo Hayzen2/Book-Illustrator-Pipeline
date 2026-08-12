@@ -1,3 +1,23 @@
 spring:
   application:
     name: BookIllustrator
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: jdbc:mysql://localhost:${DB_PORT:3306}/${DB_DATABASE:book_illustrator}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: ${DB_USER:gradion_user}
+    password: ${DB_PASSWORD:gradion_secret_123}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate # Validate the schema against the database on startup
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true # Format SQL output for better readability
+        dialect: org.hibernate.dialect.MySQLDialect
+  app:
+    gemini:
+      api-key: ${GEMINI_API_KEY:dummy_key}
+  server:
+    port: 8080
