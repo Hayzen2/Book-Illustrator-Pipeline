@@ -71,6 +71,7 @@ backend/src/main/java/com/pipeline/
 ├── config/         # Spring configurations (Async thread pool, CORS, RestClient setup)
 ├── controller/     # REST API endpoints (Includes the unified '/execute' endpoint and "Fat GET")
 ├── dto/            # Data Transfer Objects to separate internal Entities from JSON responses
+├── enums/           # Enum types for pipeline step names and statuses
 ├── entity/         # JPA Entities mapping directly to the MySQL database schema
 ├── repository/     # Spring Data JPA interfaces (Houses the custom @Modifying Atomic Claim-Check query)
 └── service/        # Core business logic, @Async background task orchestration, and DB transactions
