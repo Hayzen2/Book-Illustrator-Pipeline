@@ -7,6 +7,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Data;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Column;
 import com.example.BookIllustrator.enums.GlobalStatus;
@@ -18,6 +19,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import jakarta.persistence.FetchType;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+import jakarta.persistence.CascadeType;
+import java.util.List;
 
 @Entity
 @Table(name = "projects")
@@ -55,4 +58,8 @@ public class Project {
     @JoinColumn(name = "user_id", nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     private User user; // Foreign key to User
+
+    // 2-way relationship with ProjectStep
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<ProjectStep> steps;
 }
