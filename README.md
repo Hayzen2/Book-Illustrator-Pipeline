@@ -69,7 +69,6 @@ Follows a standard Layered Architecture to cleanly separate web routing, busines
 
 ```text
 backend/src/main/java/com/pipeline/
-├── client/         # External Gemini API RestClient implementation (targets v1beta/interactions)
 ├── config/         # Spring configurations (Async thread pool, CORS, RestClient setup)
 ├── controller/     # REST API endpoints (Includes the unified '/execute' endpoint and "Fat GET")
 ├── dto/            # Data Transfer Objects to separate internal Entities from JSON responses
