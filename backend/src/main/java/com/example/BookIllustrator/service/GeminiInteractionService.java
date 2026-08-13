@@ -5,7 +5,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -32,7 +31,7 @@ public class GeminiInteractionService {
     private final FileStorageService fileStorageService;
 
     private static final String TEXT_MODEL = "gemini-2.5-flash";
-    private static final String IMAGE_MODEL = "gemini-2.5-flash-image"; // Nano Banana
+    private static final String IMAGE_MODEL = "gemini-3.1-flash-image"; // Nano Banana
     private static final String SYSTEM_INSTRUCTIONS = """
         There must be no text on the image, it should not look like a cover page. 
         It should be an full illustration with no borders, titles, nor description. 
@@ -189,100 +188,155 @@ public class GeminiInteractionService {
 
 
     // NOTE: 1 portrait / character
-    public String callGeminiPortrait(String characterName, String characterPrompt, String styleText, String previousInteractionId, Long projectId) {
-        String combinedPrompt = "Create an illustration for " 
-        + characterName 
-        + " following this description: " 
-        + characterPrompt; 
-        
+    public String callGeminiPortrait(String characterName,String characterPrompt, String styleText, String previousInteractionId, Long projectId) {
+
+        String combinedPrompt = """
+            Create a character portrait for %s.
+
+            Character description:
+            %s
+
+            Art style:
+            %s
+
+            Additional image requirements:
+            %s
+
+            The image must focus on this character.
+            Create one complete illustration.
+            Do not create a character sheet.
+            Do not create multiple panels.
+            Do not create a collage.
+            Do not include text, labels, titles, captions, borders, or descriptions.
+            """.formatted(
+                characterName,
+                characterPrompt,
+                styleText,
+                SYSTEM_INSTRUCTIONS
+            );
+
         Map<String, Object> requestBody = Map.of(
             "model", IMAGE_MODEL,
             "previous_interaction_id", previousInteractionId,
-            "input", combinedPrompt 
-            + ". The style we want you to follow is: " 
-            + styleText + ". Also follow those rules: " 
-            + SYSTEM_INSTRUCTIONS 
-        );
-
-        String responseJson = executeGeminiRequest(requestBody);
-        // Parse the JSON response to extract the image data (base64 encoded)
-        String base64Image = extractBase64ImageFromResponse(responseJson);
-        // Save the image to local storage and return the file path
-        return fileStorageService.savePortraitToLocalStorage(characterName, base64Image, projectId);
-    }
-
-    // NOTE: Limit 1 chapter / book
-    public Map<String, Object> callGeminiForChapters(String previousInteractionId) {
-        Map<String, Object> schema = Map.of(
-            "type", "array",
-            "items", Map.of(
-                "type", "object",
-                "properties", Map.of(
-                    "name", Map.of("type", "string"),
-                    "prompt", Map.of("type", "string"),
-                    "characters", Map.of("type", "array", "items", Map.of("type", "string")) 
-                ),
-                "required", List.of("name", "prompt", "characters")
-            )
-        );
-
-        Map<String, Object> requestBody = Map.of(
-            "model", TEXT_MODEL,
-            "previous_interaction_id", previousInteractionId,
-            "input", """
-                Now, for each chapters of the book (max 1 chapter per book), give me a prompt to illustrate what happens in it. 
-                It should be a single image, not a multi-tiled page. Be very descriptive, especially 
-                of the characters. Be very descriptive and remember to tell their name and to reuse 
-                the character prompts if they appear in the images. Also list all characters who appear 
-                in it.
-            """,
+            "input", combinedPrompt,
             "response_format", Map.of(
-                "type", "text",
-                "mime_type", "application/json",
-                "schema", schema
+                "type", "image",
+                "mime_type", "image/png",
+                "aspect_ratio", "1:1",
+                "image_size", "1K"
             )
         );
 
         String responseJson = executeGeminiRequest(requestBody);
-        try {
-            // Parse structured JSON from the response body text
-            String jsonText = extractTextFromResponse(responseJson);
-            List<Map<String, Object>> chapters = objectMapper.readValue(jsonText, new TypeReference<>() {});
-            List<Map<String, Object>> cappedChapters = chapters.stream().limit(1).collect(Collectors.toList());
-            String newId = extractInteractionIdFromResponse(responseJson);
 
-            return Map.of(
-                "interactionId", newId,
-                "chapters", cappedChapters
+        String base64Image =
+            extractBase64ImageFromResponse(responseJson);
+
+        if (base64Image == null || base64Image.isBlank()) {
+            throw new RuntimeException(
+                "Gemini completed the portrait interaction but returned no image."
             );
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to parse chapters JSON from Gemini response: " + e.getMessage(), e);
         }
+
+        return fileStorageService.savePortraitToLocalStorage(
+            characterName,
+            base64Image,
+            projectId
+        );
     }
 
     // NOTE: 1 illustration / chapter
     public String callGeminiIllustration(String chapterName, String chapterPrompt, String styleText, String previousInteractionId, List<String> base64ReferenceImages, Long projectId) {
-        String inputPrompt = "Create this illustration for " + chapterName + ": " + chapterPrompt + " Use the provided images as references of what the characters look like."; 
-        
+
+        String inputPrompt = """
+            Create the final chapter illustration for:
+
+            %s
+
+            Scene description:
+            %s
+
+            Art style:
+            %s
+
+            Additional requirements:
+            %s
+
+            Create exactly ONE complete illustration.
+
+            The provided character images are visual references.
+            Use them to maintain consistency in the appearance of the characters.
+
+            Do not create a character sheet.
+            Do not create a comic.
+            Do not create multiple panels.
+            Do not create a collage.
+            Do not include text.
+            Do not include titles.
+            Do not include labels.
+            Do not include captions.
+            Do not include borders.
+            """.formatted(
+                chapterName,
+                chapterPrompt,
+                styleText,
+                SYSTEM_INSTRUCTIONS
+            );
+
         List<Object> inputParts = new ArrayList<>();
-        inputParts.add(Map.of("type", "text", "text", inputPrompt + ". The style we want you to follow is: " + styleText + ". Also follow those rules: " + SYSTEM_INSTRUCTIONS));
-        
-        // Inject character portraits as references[cite: 2]
+
+        inputParts.add(
+            Map.of(
+                "type", "text",
+                "text", inputPrompt
+            )
+        );
+
         if (base64ReferenceImages != null) {
             for (String base64Img : base64ReferenceImages) {
-                inputParts.add(Map.of("type", "image", "data", base64Img, "mime_type", "image/png"));
+
+                if (base64Img == null || base64Img.isBlank()) {
+                    continue;
+                }
+
+                inputParts.add(
+                    Map.of(
+                        "type", "image",
+                        "data", base64Img,
+                        "mime_type", "image/png"
+                    )
+                );
             }
         }
 
         Map<String, Object> requestBody = Map.of(
             "model", IMAGE_MODEL,
             "previous_interaction_id", previousInteractionId,
-            "input", inputParts 
+            "input", inputParts,
+            "response_format", Map.of(
+                "type", "image",
+                "mime_type", "image/png",
+                "aspect_ratio", "16:9",
+                "image_size", "1K"
+            )
         );
-        
+
         String responseJson = executeGeminiRequest(requestBody);
-        String base64Image = extractBase64ImageFromResponse(responseJson);
-        return fileStorageService.saveIllustrationToLocalStorage(chapterName, base64Image, projectId);
+
+        String base64Image =
+            extractBase64ImageFromResponse(responseJson);
+
+        if (base64Image == null || base64Image.isBlank()) {
+            throw new RuntimeException(
+                "Gemini completed the illustration interaction but returned no image."
+            );
+        }
+
+        return fileStorageService.saveIllustrationToLocalStorage(
+            chapterName,
+            base64Image,
+            projectId
+        );
     }
 
     private String extractTextFromResponse(String responseJson) {
@@ -341,33 +395,100 @@ public class GeminiInteractionService {
     }
 
     private String extractBase64ImageFromResponse(String responseJson) {
+
         try {
-            Map<String, Object> responseMap = objectMapper.readValue(responseJson, new TypeReference<>() {});
-            
-            // Navigate the Interactions API structure to find the image
-            if (responseMap.containsKey("steps")) {
-                List<Map<String, Object>> steps = (List<Map<String, Object>>) responseMap.get("steps");
-                if (steps != null && !steps.isEmpty()) {
-                    // Iterate backwards to find the last model_output with an image
-                    for (int i = steps.size() - 1; i >= 0; i--) {
-                        Map<String, Object> step = steps.get(i);
-                        if ("model_output".equals(step.get("type")) && step.containsKey("content")) {
-                            List<Map<String, Object>> contents = (List<Map<String, Object>>) step.get("content");
-                            for (Map<String, Object> content : contents) {
-                                if ("image".equals(content.get("type")) && content.containsKey("data")) {
-                                    return (String) content.get("data");
-                                }
+
+            Map<String, Object> responseMap =
+                objectMapper.readValue(
+                    responseJson,
+                    new TypeReference<Map<String, Object>>() {}
+                );
+
+            Object stepsObject = responseMap.get("steps");
+
+            if (stepsObject instanceof List<?> steps) {
+
+                for (int i = steps.size() - 1; i >= 0; i--) {
+
+                    Object stepObject = steps.get(i);
+
+                    if (!(stepObject instanceof Map<?, ?>)) {
+                        continue;
+                    }
+
+                    Map<String, Object> step =
+                        (Map<String, Object>) stepObject;
+
+                    if (!"model_output".equals(step.get("type"))) {
+                        continue;
+                    }
+
+                    Object contentObject = step.get("content");
+
+                    if (!(contentObject instanceof List<?>)) {
+                        continue;
+                    }
+
+                    List<?> contents =
+                        (List<?>) contentObject;
+
+                    for (int j = contents.size() - 1; j >= 0; j--) {
+
+                        Object contentObject = contents.get(j);
+
+                        if (!(contentObject instanceof Map<?, ?>)) {
+                            continue;
+                        }
+
+                        Map<String, Object> content =
+                            (Map<String, Object>) contentObject;
+
+                        String type =
+                            String.valueOf(content.get("type"));
+
+                        if ("image".equals(type)) {
+
+                            Object data = content.get("data");
+
+                            if (data instanceof String base64
+                                    && !base64.isBlank()) {
+
+                                return base64;
                             }
                         }
                     }
                 }
             }
-            
-            // Fallback for flat structure
-            return (String) responseMap.getOrDefault("image_base64", "");
-            
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to extract base64 image from Gemini response: " + e.getMessage());
+
+            /*
+            * Fallback in case the API response contains
+            * the generated image in a top-level field.
+            */
+            Object imageBase64 =
+                responseMap.get("image_base64");
+
+            if (imageBase64 instanceof String base64
+                    && !base64.isBlank()) {
+
+                return base64;
+            }
+
+            log.error(
+                "No image found in Gemini response: {}",
+                responseJson
+            );
+
+            throw new RuntimeException(
+                "Gemini response did not contain generated image data."
+            );
+
+        } catch (JsonProcessingException e) {
+
+            throw new RuntimeException(
+                "Failed to parse Gemini image response: "
+                + e.getMessage(),
+                e
+            );
         }
     }
 
@@ -388,21 +509,63 @@ public class GeminiInteractionService {
 
     private String extractInteractionIdFromResponse(String responseJson) {
         try {
-            Map<String, Object> responseMap = objectMapper.readValue(responseJson, new TypeReference<>() {});
-            
-            // Thêm key snake_case phổ biến của các API
-            if (responseMap.containsKey("interaction_id")) return String.valueOf(responseMap.get("interaction_id"));
-            if (responseMap.containsKey("interactionId")) return String.valueOf(responseMap.get("interactionId"));
-            if (responseMap.containsKey("id")) return String.valueOf(responseMap.get("id"));
-            if (responseMap.containsKey("name")) return String.valueOf(responseMap.get("name"));
-            
-            // Nếu không tìm thấy, NÉM LỖI RÕ RÀNG để dễ debug
-            log.error("Could not find interaction ID in response: {}", responseJson);
-            throw new RuntimeException("Missing interaction ID in API response");
-            
+            Map<String, Object> responseMap =
+                objectMapper.readValue(
+                    responseJson,
+                    new TypeReference<Map<String, Object>>() {}
+                );
+
+            Object id = responseMap.get("id");
+
+            if (id instanceof String interactionId
+                    && !interactionId.isBlank()) {
+
+                return interactionId;
+            }
+
+            /*
+            * Keep these fallbacks only if your actual API response
+            * contains them.
+            */
+            Object interactionId =
+                responseMap.get("interaction_id");
+
+            if (interactionId instanceof String value
+                    && !value.isBlank()) {
+
+                return value;
+            }
+
+            Object camelCaseId =
+                responseMap.get("interactionId");
+
+            if (camelCaseId instanceof String value
+                    && !value.isBlank()) {
+
+                return value;
+            }
+
+            log.error(
+                "Could not find interaction ID in response: {}",
+                responseJson
+            );
+
+            throw new RuntimeException(
+                "Missing interaction ID in Gemini API response"
+            );
+
         } catch (JsonProcessingException e) {
-            log.error("Failed to parse interaction ID from: {}", responseJson);
-            throw new RuntimeException("Invalid JSON response from API", e);
+
+            log.error(
+                "Failed to parse interaction ID from: {}",
+                responseJson,
+                e
+            );
+
+            throw new RuntimeException(
+                "Invalid JSON response from Gemini API",
+                e
+            );
         }
     }
 }
