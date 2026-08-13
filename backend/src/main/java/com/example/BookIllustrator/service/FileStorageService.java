@@ -7,6 +7,8 @@ import java.nio.file.Paths;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.BookIllustrator.entity.Project;
+
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -122,6 +124,44 @@ public class FileStorageService {
             return java.util.Base64.getEncoder().encodeToString(imageBytes);
         } catch (IOException e) {
             throw new RuntimeException("Failed to read the image: " + e.getMessage());
+        }
+    }
+
+    public void deleteProjectFiles(Project project) {
+        try {
+            // Delete the book file
+            Path bookFilePath = Paths.get(project.getBookFilePath());
+            Files.deleteIfExists(bookFilePath);
+
+            // Delete the portraits directory
+            Path portraitsDirPath = Paths.get(STORAGE_DIRECTORY, "portraits", String.valueOf(project.getId()));
+            if (Files.exists(portraitsDirPath)) {
+                Files.walk(portraitsDirPath)
+                    .sorted((a, b) -> b.compareTo(a)) // Delete files before directories
+                    .forEach(path -> {
+                        try {
+                            Files.deleteIfExists(path);
+                        } catch (IOException e) {
+                            throw new RuntimeException("Failed to delete file: " + path.toString(), e);
+                        }
+                    });
+            }
+
+            // Delete the illustrations directory
+            Path illustrationsDirPath = Paths.get(STORAGE_DIRECTORY, "illustrations", String.valueOf(project.getId()));
+            if (Files.exists(illustrationsDirPath)) {
+                Files.walk(illustrationsDirPath)
+                    .sorted((a, b) -> b.compareTo(a)) // Delete files before directories
+                    .forEach(path -> {
+                        try {
+                            Files.deleteIfExists(path);
+                        } catch (IOException e) {
+                            throw new RuntimeException("Failed to delete file: " + path.toString(), e);
+                        }
+                    });
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to delete project files: " + e.getMessage(), e);
         }
     }
 }

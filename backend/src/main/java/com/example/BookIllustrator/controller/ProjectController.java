@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -68,5 +69,12 @@ public class ProjectController {
         Project project = projectManagementService.createProject(userId, title, fileUpload);
         projectStepExecutionService.initializeContextChain(project);
         return new ApiResponse<>(201, "Project created successfully", project);
+    }
+
+    @DeleteMapping("/{projectId}")
+    public ApiResponse<Void> deleteProject(@PathVariable Long projectId, @AuthenticationPrincipal Long userId) {
+        Project project = projectRepository.findByIdAndUserId(projectId, userId).orElseThrow(() -> new RuntimeException("Project not found with ID: " + projectId));
+        projectManagementService.deleteProject(project);
+        return new ApiResponse<>(200, "Project deleted successfully", null);
     }
 }

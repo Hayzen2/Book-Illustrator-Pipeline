@@ -112,4 +112,17 @@ public class ProjectManagementService {
             chapters
         );
     }
+
+    @Transactional
+    public void deleteProject(Project project) {
+        try {
+            // Delete the txt, images, and other associated files from local storage
+            fileStorageService.deleteProjectFiles(project);
+
+            // Delete the project itself
+            projectRepository.delete(project);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete project: " + e.getMessage());
+        }
+    }
 }
