@@ -157,7 +157,7 @@ const Homepage = () => {
       case 'COMPLETED':
         return 'bg-green-100 text-green-700';
 
-      case 'PROCESSING':
+      case 'IN_PROGRESS':
         return 'bg-blue-100 text-blue-700';
 
       case 'FAILED':

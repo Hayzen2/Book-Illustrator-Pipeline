@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -31,7 +32,7 @@ public class GeminiInteractionService {
     private final FileStorageService fileStorageService;
 
     private static final String TEXT_MODEL = "gemini-2.5-flash";
-    private static final String IMAGE_MODEL = "gemini-3.1-flash-image"; // Nano Banana
+    private static final String IMAGE_MODEL = "gemini-2.5-flash-image"; // Nano Banana
     private static final String SYSTEM_INSTRUCTIONS = """
         There must be no text on the image, it should not look like a cover page. 
         It should be an full illustration with no borders, titles, nor description. 
@@ -84,6 +85,148 @@ public class GeminiInteractionService {
             throw new RuntimeException("Gemini API Error: " + responseBody, e);
         } catch (Exception e) {
             throw new RuntimeException("Failed to call Gemini API: " + e.getMessage(), e);
+        }
+    }
+
+    // NOTE: Limit 1 chapter / book
+    public Map<String, Object> callGeminiChapters(String previousInteractionId) {
+
+        Map<String, Object> schema = Map.of(
+            "type", "array",
+            "items", Map.of(
+                "type", "object",
+                "properties", Map.of(
+                    "name", Map.of(
+                        "type", "string"
+                    ),
+                    "prompt", Map.of(
+                        "type", "string"
+                    ),
+                    "characters", Map.of(
+                        "type", "array",
+                        "items", Map.of(
+                            "type", "string"
+                        )
+                    )
+                ),
+                "required", List.of(
+                    "name",
+                    "prompt",
+                    "characters"
+                )
+            )
+        );
+
+        String inputPrompt = """
+            Create ONE chapter illustration for this book.
+
+            Choose the single most important or visually interesting chapter or scene.
+
+            Return ONLY a valid JSON array containing exactly one object.
+
+            Do not invent characters.
+            Only use characters already identified in the previous step.
+
+            The "name" field must contain the chapter name or a short scene name.
+
+            The "characters" field must contain the exact names of all characters
+            who appear in the selected scene.
+
+            The "prompt" field must be a detailed image-generation prompt.
+
+            The prompt MUST:
+            - describe the selected scene in detail
+            - describe the setting
+            - describe the atmosphere
+            - describe the lighting
+            - describe important objects
+            - describe what each character is doing
+            - use the exact character names
+            - reuse the established character descriptions from the previous step
+            - maintain visual consistency with those character descriptions
+            - be suitable as an image-generation prompt
+            - describe ONE single illustration
+            - NOT describe a comic
+            - NOT describe multiple panels
+            - NOT describe a collage
+            - contain no text
+            - contain no title
+            - contain no labels
+            - contain no borders
+
+            If the book contains no suitable scene, return [].
+
+            Do not return explanations.
+            Do not use Markdown.
+            Do not use ```json.
+            Do not put any text before or after the JSON.
+
+            Expected format:
+
+            [
+            {
+                "name": "Chapter or scene name",
+                "prompt": "Detailed image-generation prompt...",
+                "characters": ["Character Name"]
+            }
+            ]
+            """;
+
+        Map<String, Object> requestBody = Map.of(
+            "model", TEXT_MODEL,
+            "previous_interaction_id", previousInteractionId,
+            "input", inputPrompt,
+            "response_format", Map.of(
+                "type", "text",
+                "mime_type", "application/json",
+                "schema", schema
+            )
+        );
+
+        String responseJson = executeGeminiRequest(requestBody);
+
+        try {
+            String jsonText = extractTextFromResponse(responseJson);
+
+            if (jsonText == null || jsonText.isBlank()) {
+                throw new RuntimeException(
+                    "Gemini returned an empty chapter response"
+                );
+            }
+
+            List<Map<String, Object>> chapters =
+                objectMapper.readValue(
+                    jsonText,
+                    new TypeReference<List<Map<String, Object>>>() {}
+                );
+
+            // Enforce maximum 1 chapter even if Gemini returns more.
+            List<Map<String, Object>> cappedChapters =
+                chapters.stream()
+                    .limit(1)
+                    .collect(Collectors.toList());
+
+            String newInteractionId =
+                extractInteractionIdFromResponse(responseJson);
+
+            return Map.of(
+                "interactionId", newInteractionId,
+                "chapters", cappedChapters
+            );
+
+        } catch (JsonProcessingException e) {
+
+            log.error(
+                "Failed to parse chapter response. Raw response: {}",
+                responseJson,
+                e
+            );
+
+            throw new RuntimeException(
+                "Failed to parse chapters JSON from Gemini response: "
+                + e.getMessage(),
+                e
+            );
         }
     }
 
@@ -434,7 +577,7 @@ public class GeminiInteractionService {
 
                     for (int j = contents.size() - 1; j >= 0; j--) {
 
-                        Object contentObject = contents.get(j);
+                        contentObject = contents.get(j);
 
                         if (!(contentObject instanceof Map<?, ?>)) {
                             continue;

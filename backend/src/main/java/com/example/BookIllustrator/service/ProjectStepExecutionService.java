@@ -12,6 +12,7 @@ import com.example.BookIllustrator.entity.Chapter;
 import com.example.BookIllustrator.entity.Project;
 import com.example.BookIllustrator.entity.ProjectStep;
 import com.example.BookIllustrator.entity.StoryCharacter;
+import com.example.BookIllustrator.enums.GlobalStatus;
 import com.example.BookIllustrator.enums.StepName;
 import com.example.BookIllustrator.enums.StepStatus;
 import com.example.BookIllustrator.repository.ChapterRepository;
@@ -32,6 +33,7 @@ public class ProjectStepExecutionService {
     private final StoryCharacterRepository storyCharacterRepository;
     private final ChapterRepository chapterRepository;
     private final FileStorageService fileStorageService;
+    
     
     public void beginProjectExecution(Project project) {
         // Initialize the steps for the project
@@ -88,6 +90,45 @@ public class ProjectStepExecutionService {
             log.error("Unhandled exception in background step execution: ", ex);
             return null;
         });
+    }
+    private void updateGlobalStatus(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() ->
+                        new RuntimeException("Project not found: " + projectId));
+
+        List<ProjectStep> steps =
+                projectStepRepository.findByProjectId(projectId);
+
+        boolean hasCompletedStep = steps.stream()
+                .anyMatch(step ->
+                        step.getStatus() == StepStatus.COMPLETED);
+
+        boolean allCompleted =
+                !steps.isEmpty()
+                && steps.stream()
+                        .allMatch(step ->
+                                step.getStatus() == StepStatus.COMPLETED);
+
+        if (allCompleted) {
+
+            project.setStatus(GlobalStatus.DONE);
+
+        } else if (hasCompletedStep) {
+
+            project.setStatus(GlobalStatus.IN_PROGRESS);
+
+        } else {
+
+            project.setStatus(GlobalStatus.DRAFT);
+        }
+
+        projectRepository.save(project);
+
+        log.info(
+                "Updated global status for project {} -> {}",
+                projectId,
+                project.getStatus()
+        );
     }
 
     // Process the external Gemini call for the given step
@@ -165,7 +206,7 @@ public class ProjectStepExecutionService {
 
                 case CHAPTERS:
                     // Generate list of chapters (maximum 1 chapter)
-                    Map<String, Object> chapterResult = geminiInteractionService.callGeminiForChapters(currentInteractionId);
+                    Map<String, Object> chapterResult = geminiInteractionService.callGeminiChapters(currentInteractionId);
                     if (chapterResult.containsKey("interactionId")) {
                         project.setBookInteractionId((String) chapterResult.get("interactionId"));
                         projectRepository.save(project);
@@ -252,6 +293,12 @@ public class ProjectStepExecutionService {
             }
             
             // Completed
+            updateStepStatus(
+                project.getId(),
+                stepName,
+                StepStatus.COMPLETED,
+                null
+            );
             updateStepStatus(project.getId(), stepName, StepStatus.COMPLETED, null);
             
         } catch (Exception e) {

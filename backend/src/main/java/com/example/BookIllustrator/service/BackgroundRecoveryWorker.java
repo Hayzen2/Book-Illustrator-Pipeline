@@ -20,10 +20,10 @@ public class BackgroundRecoveryWorker {
     private final ProjectStepExecutionService projectStepExecutionService;
 
     // This method runs every minute to check for stuck steps and mark them as 
-    // FAILED if they have been in PENDING or IN_PROGRESS for too long (5 minutes).
+    // FAILED if they have been in PENDING or IN_PROGRESS for too long (10 minutes).
     @Scheduled(fixedDelay = 60000)
     public void retryStuckSteps() {
-        LocalDateTime timeoutThreshold = LocalDateTime.now().minusMinutes(5);
+        LocalDateTime timeoutThreshold = LocalDateTime.now().minusMinutes(10);
         List<ProjectStep> stuckSteps = projectStepRepository.findStuckSteps(timeoutThreshold);
 
         if (!stuckSteps.isEmpty()) {

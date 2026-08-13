@@ -845,7 +845,7 @@ public class PipelineService {
     // 1. We ONLY wrap the claim in a transaction. It takes < 2ms.
     @Transactional
     public boolean attemptToClaimStep(Long projectId, String stepName) {
-        // If a step has been IN_PROGRESS for > 5 minutes, assume the server crashed.
+        // If a step has been IN_PROGRESS for > 10 minutes, assume the server crashed.
         LocalDateTime timeoutThreshold = LocalDateTime.now().minusMinutes(5);
         
         int updatedRows = stepRepository.claimStepForExecution(projectId, stepName, timeoutThreshold);

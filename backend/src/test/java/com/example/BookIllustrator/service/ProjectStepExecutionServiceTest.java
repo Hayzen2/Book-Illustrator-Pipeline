@@ -143,7 +143,7 @@ class ProjectStepExecutionServiceTest {
 
     @Test
     void processChaptersStep_savesChapterCharacterLinks() throws Exception {
-        when(geminiInteractionService.callGeminiForChapters("interaction-1")).thenReturn(Map.of(
+        when(geminiInteractionService.callGeminiChapters("interaction-1")).thenReturn(Map.of(
             "interactionId", "interaction-2",
             "chapters", List.of(Map.of(
                 "name", "Chapter 1",

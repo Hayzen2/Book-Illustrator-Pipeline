@@ -99,7 +99,7 @@ To prevent duplicate Gemini API calls (like from double-clicks or multiple worke
 1. **Atomic Claim**: When the `@Scheduled` worker scans for pending jobs, it executes a fast, sub-millisecond SQL update to claim a step: 
    `UPDATE project_steps SET status = 'IN_PROGRESS' WHERE status IN ('PENDING', 'FAILED')`
 2. **Execution Outside Transaction**: MySQL guarantees this update is atomic. Only one worker thread will successfully update the row (returning `updatedRows == 1`). The winning thread proceeds to call the Gemini API *entirely outside* of any database transaction, releasing the DB connection immediately.
-3. **Stuck-Step Recovery**: The same atomic claim query includes a fallback condition: `OR (status = 'IN_PROGRESS' AND updated_at < [TIMEOUT_THRESHOLD])`. If the server crashes mid-generation, the step remains in `IN_PROGRESS`. After a defined timeout (e.g., 5 minutes), the step is automatically reclaimed by the next worker cycle, satisfying the "nothing stuck forever" rule without manual database intervention.
+3. **Stuck-Step Recovery**: The same atomic claim query includes a fallback condition: `OR (status = 'IN_PROGRESS' AND updated_at < [TIMEOUT_THRESHOLD])`. If the server crashes mid-generation, the step remains in `IN_PROGRESS`. After a defined timeout (e.g., 10 minutes), the step is automatically reclaimed by the next worker cycle, satisfying the "nothing stuck forever" rule without manual database intervention.
 
 ## API Design & Communication
 

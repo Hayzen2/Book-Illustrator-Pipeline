@@ -25,3 +25,11 @@ To achieve the "per-item progress" requirement, I considered WebSockets or SSE. 
 
 ### 7. Architecture: Durable Worker vs. In-Memory @Async (Copilot override Gemini)
 Gemini initially proposed handling the long-running AI tasks using Spring's `@Async` annotation inside a monolithic `PipelineExecutionService`. Afterward, when I decided on the file structures of the backend, I prompted GitHub Copilot to review Gemini's design. Copilot identified `@Async` as a fatal flaw: if the server restarts, in-memory `@Async` threads die permanently, violating the "nothing stuck forever" rule. Copilot proposed a Durable Job Worker pattern. I agreed and changed the architecture, adopting a Hexagonal-lite structure separating the Core domain, external Adapters, and replacing `@Async` with a `@Scheduled` background worker that uses the DB as a durable queue. The cost is increased boilerplate (more classes) compared to a quick but flawed `@Async` method, but it achieves better fault tolerance.
+
+## Conclusion
+
+### If you had one more day, what would you build next and why?
+
+If I had one more day, I would replace the current HTTP polling mechanism with **Server-Sent Events (SSE)** for real-time progress updates, and implement a **client-side asset cache** for Gemini's raw responses. 
+
+Currently, while polling keeps the architecture stateless and simple, it introduces unnecessary network overhead and a slight latency in UI updates (the 3-second delay). SSE would allow the backend to push status changes and image availability to the client instantly as they happen in the background worker, significantly improving perceived performance. I would prioritize this because would update the application from "functional" to "polished" without introducing the complex bi-directional connection management and state-sync challenges associated with WebSockets.
