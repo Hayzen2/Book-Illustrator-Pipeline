@@ -2,7 +2,7 @@ spring:
   application:
     name: BookIllustrator
   config:
-    import: optional:file:.env[.properties]
+    import: optional:file:../.env[.properties]
   datasource:
     url: jdbc:mysql://localhost:${DB_PORT:3306}/${DB_DATABASE:book_illustrator}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: ${DB_USER:gradion_user}

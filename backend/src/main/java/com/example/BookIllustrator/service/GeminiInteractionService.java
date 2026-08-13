@@ -11,14 +11,17 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class GeminiInteractionService {
     @Value("${app.gemini.api-key}")
@@ -59,20 +62,27 @@ public class GeminiInteractionService {
 
         } catch (Exception e) {
             // Handle exceptions and log errors
-            return "Error initializing Gemini interaction: " + e.getMessage();
+            log.error("Failed to initialize Gemini interaction for project {}", projectId, e);
+            throw new RuntimeException("Init failed: " + e.getMessage(), e);
         }
     }
 
     private String executeGeminiRequest(Map<String, Object> requestBody) {
-        try {
+    try {
             String resp = geminiWebClient.post()
                     .uri("/interactions")
+                    .header("x-goog-api-key", apiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestBody)
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
             return resp == null ? "" : resp;
+        } catch (WebClientResponseException e) {
+            // This extracts the ACTUAL JSON error message sent back by Google
+            String responseBody = e.getResponseBodyAsString();
+            log.error("Gemini API Error Body: {}", responseBody);
+            throw new RuntimeException("Gemini API Error: " + responseBody, e);
         } catch (Exception e) {
             throw new RuntimeException("Failed to call Gemini API: " + e.getMessage(), e);
         }
@@ -96,9 +106,7 @@ public class GeminiInteractionService {
         Map<String, Object> requestBody = Map.of(
             "model", TEXT_MODEL,
             "previous_interaction_id", previousInteractionId,
-            "input", List.of(
-                Map.of("type", "text", "text", inputPrompt)
-            )
+            "input", inputPrompt
         );
 
         String responseJson = executeGeminiRequest(requestBody);
@@ -135,13 +143,31 @@ public class GeminiInteractionService {
             "model", TEXT_MODEL,
             "previous_interaction_id", previousInteractionId,
             "input", """
-                Can you describe the main characters (only the adults and max 2 characters per book) 
-                and prepare a prompt describing them with as much details as possible 
-                (use the descriptions from the book) so Nano Banana can generate 
-                images of them? Each prompt should be at least 50 words.
+                Return ONLY a valid JSON array of the main adult characters from the book.
+                Maximum 2 characters.
+                Do not invent characters.
+                Only include adults explicitly present in the book.
+                If fewer than 2 exist, return fewer.
+                If none exist, return [].
+                Each object MUST contain:
+                - name
+                - prompt
+                The prompt must be at least 50 words and describe the character using details supported by the book, suitable for image generation.
+                NO explanation.
+                NO Markdown.
+                NO ```json.
+                NO text before or after the JSON.
+                Example:
+                [
+                {
+                    "name": "Elias Vale",
+                    "prompt": "..."
+                }
+                ]
             """, 
             "response_format", Map.of(
-                "type", "json",
+                "type", "text",
+                "mime_type", "application/json",
                 "schema", schema
             )
         );
@@ -211,7 +237,8 @@ public class GeminiInteractionService {
                 in it.
             """,
             "response_format", Map.of(
-                "type", "json",
+                "type", "text",
+                "mime_type", "application/json",
                 "schema", schema
             )
         );
@@ -258,23 +285,84 @@ public class GeminiInteractionService {
         return fileStorageService.saveIllustrationToLocalStorage(chapterName, base64Image, projectId);
     }
 
+    private String extractTextFromResponse(String responseJson) {
+        try {
+            Map<String, Object> responseMap =
+                    objectMapper.readValue(responseJson, new TypeReference<>() {});
+
+            Object stepsObject = responseMap.get("steps");
+
+            if (stepsObject instanceof List<?> steps) {
+                for (int i = steps.size() - 1; i >= 0; i--) {
+                    Object stepObject = steps.get(i);
+
+                    if (!(stepObject instanceof Map<?, ?> step)) {
+                        continue;
+                    }
+
+                    if (!"model_output".equals(step.get("type"))) {
+                        continue;
+                    }
+
+                    Object contentObject = step.get("content");
+
+                    if (!(contentObject instanceof List<?> contents)) {
+                        continue;
+                    }
+
+                    for (int j = contents.size() - 1; j >= 0; j--) {
+                        Object contentObjectItem = contents.get(j);
+
+                        if (!(contentObjectItem instanceof Map<?, ?> content)) {
+                            continue;
+                        }
+
+                        if ("text".equals(content.get("type"))
+                                && content.get("text") instanceof String text) {
+
+                            return cleanMarkdown(text);
+                        }
+                    }
+                }
+            }
+
+            // Fallback
+            if (responseMap.get("text") instanceof String text) {
+                return cleanMarkdown(text);
+            }
+
+            log.warn("Could not find model output text in Gemini response: {}", responseJson);
+            return "";
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Failed to extract text from Gemini response: " + e.getMessage(), e);
+        }
+    }
+
     private String extractBase64ImageFromResponse(String responseJson) {
         try {
             Map<String, Object> responseMap = objectMapper.readValue(responseJson, new TypeReference<>() {});
             
-            // Navigate the typical Gemini nested structure (adjust if your endpoint differs)
-            // Example: { "candidates": [ { "content": { "parts": [ { "inlineData": { "data": "base64..." } } ] } } ] }
-            if (responseMap.containsKey("candidates")) {
-                 List<Map<String, Object>> candidates = (List<Map<String, Object>>) responseMap.get("candidates");
-                 if (!candidates.isEmpty()) {
-                     Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
-                     List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
-                     if (!parts.isEmpty() && parts.get(0).containsKey("inlineData")) {
-                         Map<String, Object> inlineData = (Map<String, Object>) parts.get(0).get("inlineData");
-                         return (String) inlineData.get("data");
-                     }
-                 }
+            // Navigate the Interactions API structure to find the image
+            if (responseMap.containsKey("steps")) {
+                List<Map<String, Object>> steps = (List<Map<String, Object>>) responseMap.get("steps");
+                if (steps != null && !steps.isEmpty()) {
+                    // Iterate backwards to find the last model_output with an image
+                    for (int i = steps.size() - 1; i >= 0; i--) {
+                        Map<String, Object> step = steps.get(i);
+                        if ("model_output".equals(step.get("type")) && step.containsKey("content")) {
+                            List<Map<String, Object>> contents = (List<Map<String, Object>>) step.get("content");
+                            for (Map<String, Object> content : contents) {
+                                if ("image".equals(content.get("type")) && content.containsKey("data")) {
+                                    return (String) content.get("data");
+                                }
+                            }
+                        }
+                    }
+                }
             }
+            
             // Fallback for flat structure
             return (String) responseMap.getOrDefault("image_base64", "");
             
@@ -283,71 +371,38 @@ public class GeminiInteractionService {
         }
     }
 
-    private String extractTextFromResponse(String responseJson) {
-        String text = ""; // Initialize to an empty string
-        try {
-            Map<String, Object> responseMap = objectMapper.readValue(responseJson, new TypeReference<>() {});
-            // Try common locations for textual/json output in Gemini responses
-            if (responseMap.containsKey("text") && responseMap.get("text") instanceof String) {
-                text = (String) responseMap.get("text");
-                return text;
-            }
-
-            if (responseMap.containsKey("candidates")) {
-                List<Map<String, Object>> candidates = (List<Map<String, Object>>) responseMap.get("candidates");
-                for (Map<String, Object> cand : candidates) {
-                    Object contentObj = cand.get("content");
-                    if (contentObj instanceof Map) {
-                        Map<String, Object> content = (Map<String, Object>) contentObj;
-                        Object partsObj = content.get("parts");
-                        if (partsObj instanceof List) {
-                            List<Map<String, Object>> parts = (List<Map<String, Object>>) partsObj;
-                            for (Map<String, Object> part : parts) {
-                                // part may contain 'text' or 'mime_type' + 'text' or 'inlineText'
-                                if (part.containsKey("text") && part.get("text") instanceof String) {
-                                    String candidate = (String) part.get("text");
-                                    if (looksLikeJson(candidate)) return candidate;
-                                }
-                                if (part.containsKey("inlineText") && part.get("inlineText") instanceof String) {
-                                    String candidate = (String) part.get("inlineText");
-                                    if (looksLikeJson(candidate)) return candidate;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Last resort: search top-level values for a JSON-like string
-            for (Object v : responseMap.values()) {
-                if (v instanceof String) {
-                    String s = (String) v;
-                    if (looksLikeJson(s)) return s;
-                }
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to extract text from Gemini response: " + e.getMessage());
+    // Helper method to strip markdown backticks from Gemini's JSON output
+    private String cleanMarkdown(String rawText) {
+        if (rawText == null) return "";
+        String text = rawText.trim();
+        if (text.startsWith("```json")) {
+            text = text.substring(7);
+        } else if (text.startsWith("```")) {
+            text = text.substring(3);
         }
-        return text;
-    }
-
-    private boolean looksLikeJson(String s) {
-        if (s == null) return false;
-        String trimmed = s.trim();
-        return trimmed.startsWith("{") || trimmed.startsWith("[");
+        if (text.endsWith("```")) {
+            text = text.substring(0, text.length() - 3);
+        }
+        return text.trim();
     }
 
     private String extractInteractionIdFromResponse(String responseJson) {
         try {
             Map<String, Object> responseMap = objectMapper.readValue(responseJson, new TypeReference<>() {});
-            // try common keys
+            
+            // Thêm key snake_case phổ biến của các API
+            if (responseMap.containsKey("interaction_id")) return String.valueOf(responseMap.get("interaction_id"));
             if (responseMap.containsKey("interactionId")) return String.valueOf(responseMap.get("interactionId"));
             if (responseMap.containsKey("id")) return String.valueOf(responseMap.get("id"));
             if (responseMap.containsKey("name")) return String.valueOf(responseMap.get("name"));
-            // fallback: return whole json (caller should handle)
-            return responseJson;
-        } catch (Exception e) {
-            return responseJson;
+            
+            // Nếu không tìm thấy, NÉM LỖI RÕ RÀNG để dễ debug
+            log.error("Could not find interaction ID in response: {}", responseJson);
+            throw new RuntimeException("Missing interaction ID in API response");
+            
+        } catch (JsonProcessingException e) {
+            log.error("Failed to parse interaction ID from: {}", responseJson);
+            throw new RuntimeException("Invalid JSON response from API", e);
         }
     }
 }

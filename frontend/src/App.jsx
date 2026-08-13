@@ -1,68 +1,66 @@
 import React from 'react';
 import { Route, Routes, Navigate } from 'react-router-dom';
+
 import { useAuth } from './hooks/useAuth';
+
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
-import LoginPage from './pages/LoginPage';
 
-const ProjectsPage = () => (
-  <div className="p-8">
-    <h1>Your Projects Dashboard</h1>
-  </div>
-);
+import LoginPage from './pages/LoginPage';
+import Homepage from './pages/Homepage';
+import ProjectDetailPage from './pages/ProjectDetailPage';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    return <div className="p-8">Loading session...</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="text-gray-500">Loading session...</div>
+      </div>
+    );
   }
 
-  return isAuthenticated
-    ? children
-    : <Navigate to="/login" replace />;
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
 function App() {
   const { isAuthenticated } = useAuth();
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100">
-
-      {/* Header */}
+    <div className="flex min-h-screen flex-col bg-gray-50">
       {isAuthenticated && <Header />}
 
-      {/* Main content */}
       <main className="flex-1">
         <Routes>
-          <Route
-            path="/login"
-            element={<LoginPage />}
-          />
+          <Route path="/login" element={<LoginPage />} />
 
           <Route
-            path="/projects"
+            path="/"
             element={
               <ProtectedRoute>
-                <ProjectsPage />
+                <Homepage />
               </ProtectedRoute>
             }
           />
 
           <Route
-            path="/"
+            path="/projects/:projectId"
             element={
-              isAuthenticated
-                ? <Navigate to="/projects" replace />
-                : <Navigate to="/login" replace />
+              <ProtectedRoute>
+                <ProjectDetailPage />
+              </ProtectedRoute>
             }
+          />
+
+          <Route
+            path="*"
+            element={<Navigate to="/" replace />}
           />
         </Routes>
       </main>
 
-      {/* Footer */}
-      <Footer />
-
+      {isAuthenticated && <Footer />}
     </div>
   );
 }
