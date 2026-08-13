@@ -1,0 +1,316 @@
+:root {
+  --grad-orange: #FF6B00;
+  --grad-orange-hover: #E85F00;
+  --grad-orange-light: #FFA861;
+
+  --grad-ink: #231F20;
+  --grad-ink-body: #434343;
+  --grad-ink-2: #595959;
+  --grad-ink-3: #919699;
+
+  --grad-line: #BAB7B1;
+  --grad-paper: #F2EEE7;
+  --grad-paper-2: #F8F8F8;
+  --grad-white: #FFFFFF;
+
+  --border-1: #BAB7B1;
+  --border-2: #E8E2E0;
+
+  --shadow-card:
+    0 2px 6px rgba(35, 31, 32, 0.06),
+    0 1px 2px rgba(35, 31, 32, 0.04);
+
+  --ease-standard: cubic-bezier(.2, .7, .2, 1);
+}
+
+/* =========================
+   Page
+   ========================= */
+
+* {
+  box-sizing: border-box;
+}
+
+.center-page {
+  min-height: 100vh;
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 32px;
+
+  background: var(--grad-paper-2);
+
+  font-family: "Noto Sans", system-ui, sans-serif;
+  color: var(--grad-ink);
+
+  -webkit-font-smoothing: antialiased;
+}
+
+/* =========================
+   Authentication Card
+   ========================= */
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+
+  background: var(--grad-white);
+
+  border-radius: 16px;
+
+  box-shadow: var(--shadow-card);
+
+  padding: 48px 32px;
+
+  animation: fade-up 320ms var(--ease-standard) both;
+}
+
+/* =========================
+   Logo
+   ========================= */
+
+.logo-row {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.login-logo {
+  display: inline-block;
+
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+
+  color: var(--grad-orange);
+}
+
+/* =========================
+   Heading
+   ========================= */
+
+.auth-card h2 {
+  margin: 0 0 16px;
+
+  text-align: center;
+
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.15;
+
+  color: var(--grad-ink);
+}
+
+/* =========================
+   Description
+   ========================= */
+
+.lede {
+  margin: 0 0 32px;
+
+  text-align: center;
+
+  font-size: 14px;
+  line-height: 1.5;
+
+  color: var(--grad-ink-2);
+}
+
+/* =========================
+   Form Fields
+   ========================= */
+
+.gd-field {
+  display: block;
+}
+
+.gd-field + .gd-field {
+  margin-top: 16px;
+}
+
+.gd-field label {
+  display: block;
+
+  margin-bottom: 6px;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  color: var(--grad-ink);
+}
+
+.gd-field .req {
+  color: var(--grad-orange);
+}
+
+.gd-field input {
+  display: block;
+
+  width: 100%;
+
+  padding: 11px 14px;
+
+  font-family: inherit;
+  font-size: 14px;
+
+  color: var(--grad-ink);
+
+  background: #fff;
+
+  border: 1px solid var(--border-1);
+  border-radius: 8px;
+
+  outline: none;
+
+  transition:
+    border-color 200ms var(--ease-standard),
+    box-shadow 200ms var(--ease-standard);
+}
+
+.gd-field input::placeholder {
+  color: var(--grad-ink-3);
+}
+
+.gd-field input:hover {
+  border-color: var(--grad-ink-2);
+}
+
+.gd-field input:focus {
+  border-color: var(--grad-orange);
+
+  box-shadow:
+    0 0 0 3px rgba(255, 107, 0, 0.15);
+}
+
+.gd-field input:disabled {
+  background: var(--grad-paper-2);
+  cursor: not-allowed;
+}
+
+/* =========================
+   Error
+   ========================= */
+
+.login-error {
+  margin: 14px 0 0;
+
+  font-size: 12px;
+  line-height: 1.5;
+
+  color: #3A160A;
+}
+
+/* =========================
+   Button
+   ========================= */
+
+.login-button {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  margin-top: 24px;
+
+  padding: 13px 20px;
+
+  border: 1px solid transparent;
+  border-radius: 8px;
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+
+  color: #fff;
+  background: var(--grad-orange);
+
+  cursor: pointer;
+
+  transition:
+    background 200ms var(--ease-standard),
+    transform 200ms var(--ease-standard);
+}
+
+.login-button:hover:not(:disabled) {
+  background: var(--grad-orange-hover);
+  transform: translateY(-1px);
+}
+
+.login-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.login-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.gd-arrow {
+  display: inline-block;
+  transform: translateY(-1px);
+}
+
+
+.login-spinner {
+  width: 16px;
+  height: 16px;
+
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+
+  border-radius: 50%;
+
+  animation: spin 900ms linear infinite;
+}
+
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.login-button:focus-visible,
+.gd-field input:focus-visible {
+  outline: 2px solid var(--grad-orange);
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .center-page {
+    padding: 20px;
+  }
+
+  .auth-card {
+    padding: 40px 24px;
+  }
+
+  .auth-card h2 {
+    font-size: 23px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

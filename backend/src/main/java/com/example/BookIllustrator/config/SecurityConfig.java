@@ -27,10 +27,8 @@ public class SecurityConfig {
             // Set session management to stateless (no session will be created or used by Spring Security)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                    "/auth/**"
-                ).permitAll()
-                    .anyRequest().authenticated())
+                .requestMatchers("/auth/**").permitAll()
+                .anyRequest().authenticated())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

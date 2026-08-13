@@ -22,5 +22,5 @@ app:
 server:
   port: 8080
 jwt:
-  secret: ${JWT_SECRET:DefaultSecretKey123@}
+  secret: ${JWT_SECRET:BookIllustratorJWTSecretKey2026VerySecure123456@}
   expiration: 86400000 # 1 day
