@@ -15,11 +15,12 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.BookIllustrator.dto.api.ApiResponse;
-import com.example.BookIllustrator.dto.project.ProjectCreateRequest;
-import com.example.BookIllustrator.dto.project.ProjectListResponse;
+import com.example.BookIllustrator.dto.project.request.ProjectCreateRequest;
+import com.example.BookIllustrator.dto.project.response.ProjectListResponse;
 import com.example.BookIllustrator.entity.Project;
 import com.example.BookIllustrator.repository.ProjectRepository;
 import com.example.BookIllustrator.service.ProjectManagementService;
+import com.example.BookIllustrator.service.ProjectStepExecutionService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 public class ProjectController {
     private final ProjectManagementService projectManagementService;
     private final ProjectRepository projectRepository;
+    private final ProjectStepExecutionService projectStepExecutionService;
 
     @GetMapping("/all")
     public ApiResponse<List<ProjectListResponse>> getProjectsByUserId(@AuthenticationPrincipal Long userId) {
@@ -53,6 +55,7 @@ public class ProjectController {
     @PostMapping("/create")
     public ApiResponse<Project> createProject(@AuthenticationPrincipal Long userId, @RequestBody ProjectCreateRequest request) {
         Project project = projectManagementService.createProject(userId, request);
+        projectStepExecutionService.initializeContextChain(project);
         return new ApiResponse<>(201, "Project created successfully", project);
     }
 
@@ -63,6 +66,7 @@ public class ProjectController {
             @RequestParam("title") String title,
             @RequestParam("file") MultipartFile fileUpload) {
         Project project = projectManagementService.createProject(userId, title, fileUpload);
+        projectStepExecutionService.initializeContextChain(project);
         return new ApiResponse<>(201, "Project created successfully", project);
     }
 }

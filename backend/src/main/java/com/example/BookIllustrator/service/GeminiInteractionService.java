@@ -100,11 +100,18 @@ public class GeminiInteractionService {
                 Map.of("type", "text", "text", inputPrompt)
             )
         );
+
         String responseJson = executeGeminiRequest(requestBody);
         String newInteractionId = extractInteractionIdFromResponse(responseJson);
+
+        // Try to extract the style text from the response; if the caller provided a customStyle,
+        // prefer it, otherwise use the model's generated text (if any).
+        String generatedText = extractTextFromResponse(responseJson).trim();
+        String artStyle = (customStyle != null && !customStyle.isBlank()) ? customStyle : (generatedText.isEmpty() ? "" : generatedText);
+
         return Map.of(
             "interactionId", newInteractionId,
-            "artStyle", customStyle
+            "artStyle", artStyle
         );
     }
     // NOTE: Limit 2 characters / book

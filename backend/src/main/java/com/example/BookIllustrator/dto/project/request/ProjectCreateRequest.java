@@ -1,4 +1,4 @@
-package com.example.BookIllustrator.dto.project;
+package com.example.BookIllustrator.dto.project.request;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;

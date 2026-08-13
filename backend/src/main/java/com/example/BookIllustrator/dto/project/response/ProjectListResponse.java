@@ -1,4 +1,4 @@
-package com.example.BookIllustrator.dto.project;
+package com.example.BookIllustrator.dto.project.response;
 import java.time.LocalDateTime;
 
 import com.example.BookIllustrator.enums.GlobalStatus;

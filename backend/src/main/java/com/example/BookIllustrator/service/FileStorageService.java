@@ -92,6 +92,7 @@ public class FileStorageService {
         }
     }
 
+    // Save illustration to local storage
     public String saveIllustrationToLocalStorage(String chapterName, String base64Image, Long projectId) {
         try {
             // Create the directory path: storageDirectory/projectId/illustrations/
@@ -110,6 +111,17 @@ public class FileStorageService {
             return filePath.toString();
         } catch (IOException e) {
             throw new RuntimeException("Failed to save the illustration: " + e.getMessage());
+        }
+    }
+
+    // Read image from local storage and convert to Base64
+    public String readImageAsBase64(String imagePath) {
+        try {
+            Path path = Paths.get(imagePath);
+            byte[] imageBytes = Files.readAllBytes(path);
+            return java.util.Base64.getEncoder().encodeToString(imageBytes);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read the image: " + e.getMessage());
         }
     }
 }

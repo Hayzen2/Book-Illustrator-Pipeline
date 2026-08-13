@@ -1,17 +1,22 @@
 package com.example.BookIllustrator.entity;
 
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.JoinTable;
+import java.util.ArrayList;
+import java.util.List;
 import jakarta.persistence.Table;
 import lombok.Data;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.JoinColumn;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
-import jakarta.persistence.Column;
-import jakarta.persistence.FetchType;
 
 @Entity
 @Table(name = "chapters")
@@ -32,8 +37,16 @@ public class Chapter {
 
     // FetchType.LAZY is used to avoid loading the Project entity 
     // unless it's accessed
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id", nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     private Project project; // Foreign key to Project
+
+    @ManyToMany
+    @JoinTable(
+        name = "chapter_characters",
+        joinColumns = @JoinColumn(name = "chapter_id"),
+        inverseJoinColumns = @JoinColumn(name = "character_id")
+    )
+    private List<StoryCharacter> characters = new ArrayList<>();
 }
