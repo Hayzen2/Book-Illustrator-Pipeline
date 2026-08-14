@@ -364,7 +364,7 @@ public class GeminiInteractionService {
             "input", combinedPrompt,
             "response_format", Map.of(
                 "type", "image",
-                "mime_type", "image/png",
+                "mime_type", "image/jpeg",
                 "aspect_ratio", "1:1",
                 "image_size", "1K"
             )
@@ -446,7 +446,7 @@ public class GeminiInteractionService {
                     Map.of(
                         "type", "image",
                         "data", base64Img,
-                        "mime_type", "image/png"
+                        "mime_type", "image/jpeg"
                     )
                 );
             }
@@ -458,7 +458,7 @@ public class GeminiInteractionService {
             "input", inputParts,
             "response_format", Map.of(
                 "type", "image",
-                "mime_type", "image/png",
+                "mime_type", "image/jpeg",
                 "aspect_ratio", "16:9",
                 "image_size", "1K"
             )
