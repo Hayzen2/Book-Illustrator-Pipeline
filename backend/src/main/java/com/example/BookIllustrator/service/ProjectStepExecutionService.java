@@ -316,5 +316,6 @@ public class ProjectStepExecutionService {
             step.setErrorMessage(errorMessage);
             projectStepRepository.save(step);
         });
+        updateGlobalStatus(projectId); // Update the state of the project too
     }
 }
